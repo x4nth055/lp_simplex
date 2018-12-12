@@ -7,9 +7,9 @@ def get_all_occ(iterable, value):
 
 
 def sorter1(k):
-    if 'e' in k:
+    if 'e' in k or 's' in k:
         return 100000 + int(k[1])
-    elif 'a' in k:
+    elif 'a' in k or 'A' in k:
         return 200000 + int(k[1])
     else:
         return int(k[1])
