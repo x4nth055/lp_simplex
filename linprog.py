@@ -3,20 +3,15 @@ import re
 from colorama import Fore, init
 from utils import get_all_occ, sorter1
 from linparse import ObjectiveFunction, Constraint, Constraints
-from collections import Counter
 
 
 """
 Calculate a formed linear programming problem using the simplex method
 
 ## TODO
-    - Upper-bound inequality '>=' not yet implemented ( even though `linparse.Constraint` gives info about artificial variables -- where they are -- )
-    - Refers to the first, the two-phase method isn't completed.
-    - Equality constraints
     - Initial dual and final dual
     - Sensitivity analysis
 """
-
 
 init()
 
@@ -106,7 +101,7 @@ class LinearProgramming:
         return self.constraints.artificials
         
     def init_mat(self):
-        """Initialize start-up matrix"""
+        """Initialize start-up tableau"""
 
         # Basic variables
         if self.is_2phase_method():
@@ -153,7 +148,7 @@ class LinearProgramming:
             self._pivcol = all_occ[0]
             self._pivot_column = self.A.T[self._pivcol]
         else:
-            # 2 cj-zj's have the same value
+            # 2 or more cj-zj's have the same value
             all_cands = []
             for candidate in all_occ:
                 self._pivot_column = self.A.T[candidate]
@@ -183,6 +178,7 @@ class LinearProgramming:
         if len(all_occ) == 1:
             self._pivrow = all_occ[0]
         else:
+            # 2 or more ratios have the same value
             target_rows = [ self.A[index] for index in all_occ ]
             row_sums = [ sum(row) for row in target_rows ]
             min_row_sum = row_sums.index(min(row_sums))
@@ -321,12 +317,21 @@ class LinearProgramming:
         if show_result:
             self.print_result()
 
+    def silent_calc(self):
+        self.init_mat()
+        while self.is_not_optimized():
+            self.next_iter()
+        if self.phase == 1:
+            if not self._calc_two_phase():
+                return
+
 
     def _calc_two_phase(self):
         if self.z != 0:
             print("There is no solution for this problem.")
         else:
             self.phase += 1
+            self.iterations = 1
             # replace original Cj
             self._cj = self.cj
             # remove artificial variables now
@@ -352,85 +357,11 @@ class LinearProgramming:
             return True
 
 
-    # def initial_dual(self):  # TODO
-    #     A_dual = np.array(self.initial_A).T
-    #     b_dual = self.initial_cj
-    #     z_dual = self.initial_b
-
-    #     return LinearProgramming(A_dual, b_dual, z_dual, maximize=self.opt == min)
-
-    # def final_dual(self):  # TODO
-    #     if self.is_not_maximized():
-    #         raise NotSolutionError("Solution not reached yet.")
-    #     else:
-    #         # to be implemented
-    #         pass
-
-
-def test1():
-    objfunc = ObjectiveFunction("max z = 7t1 + 5t2 + 4t3")
-    c1 = Constraint("t1 + t2 + t3 <= 25")
-    c2 = Constraint("2t1 + t2 + t3 <= 100")
-    c3 = Constraint("t1 + t2 >= -1")
-    # c4 = Constraint("t2 + t3 = 15") # this is invalid (equality not implemented yet)
-    c4 = Constraint("t2 + t3 >= 5") # this is invalid (upper-bound uses artificial vars)
-    # c4 = Constraint("t3 <= 6")
-    c = c1 + c2 + c3 + c4
-
-    linprog = LinearProgramming(objfunc, c)
-    linprog.calc()
-
-
-def test2():
-    z = ObjectiveFunction("max Z = 24x1 + 20 x2")
-    c = Constraint("x1 + x2 <= 30") + Constraint("x1 + 2 x2 >= 40")
-    
-    linprog = LinearProgramming(z, c)
-    linprog.calc()
-
-
-def test3():
-    z = ObjectiveFunction("max W = 7x1 + 5x2 + 5x3 + 4x4")
-    c = Constraint("2x1 + 4x2 + 2x3 + 3 x4 <= 450")
-    c = c + Constraint("x1 + x2 <= 60")
-    c = c + Constraint("x3 + x4 <= 70")
-    c = c + Constraint("x1 + x3 <= 50")
-    c = c + Constraint("x2 + x4 <= 60")
-
-    linprog = LinearProgramming(z, c)
-    linprog.calc()
-
-def test4():
-    z = ObjectiveFunction("max f = 9x1 + 8 x2 + 3x3 + 4x4 + 6x5 + 7 x6")
-    c1 = Constraint("4x1 + 3x2 -x3 + x6 <= 100")
-    c2 = Constraint("3x2 + 12 x3 + 17 x4 + 20 x5 <= 1000")
-    c3 = Constraint("3x3 + x5 + 12x6 <= 520")
-    c4 = Constraint("x1 + x5 >= 60")
-    c5 = Constraint("x3 + x5 + 3 x6 <= 300")
-    c = c1 + c2 + c3 + c4 + c5
-    linprog = LinearProgramming(z, c)
-    linprog.calc()
-
-
-def test5():
-    # maximise 5x1 + 6x2
-    # x1 + x2 <= 10
-
-    # x1 - x2 >= 3
-
-    # 5x1 + 4x2 <= 35
-    z = ObjectiveFunction("max f = 5x1 + 6x2")
-    c = Constraint("x1 + x2 <= 10") + Constraint("5x1 + 4x2 <= 35")
-    linprog = LinearProgramming(z, c)
-    linprog.calc()
-
-
 if __name__ == "__main__":
 
-    # objfunc = ObjectiveFunction("max z = 6x1 + 5x2")
-    # c = Constraint("3x1 + 2x2 <= 12") + Constraint("x1 + x2 <= 5")
+    from tests import *
 
-    test5()
+    test3()
     
 
 
