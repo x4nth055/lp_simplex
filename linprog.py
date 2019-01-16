@@ -36,18 +36,16 @@ class LinearProgramming:
         self.A = self.constraints.a
         self.b = self.constraints.b
 
-
         self.varnames = None
         self._get_vars()
         
         self.z = 0
 
-        if self.objfunc.optimize == 'max':
-            self.is_not_optimized = self.is_not_maximized
-            self.opt = max
-        else:
-            self.is_not_optimized = self.is_not_minimized
-            self.opt = min
+        # minimize or maximize function
+        self.opt = None
+        self._opt = None
+
+        self._set_optimize(max) if self.objfunc.optimize == "max" else self._set_optimize(min)
 
         # number of constraints
         self.conlen = len(self.A)
@@ -84,6 +82,11 @@ class LinearProgramming:
         # number of iterations
         self.iterations = 0
 
+    def _set_optimize(self, opt):
+        self._opt = self.opt
+        self.opt = opt
+        self.is_not_optimized = self.is_not_maximized if opt is max else self.is_not_minimized
+
     def _detect_basic_vars(self):
         for i, column in enumerate(self.A.T):
             if 1 in column and np.count_nonzero(column) == 1:
@@ -106,6 +109,9 @@ class LinearProgramming:
         # Basic variables
         if self.is_2phase_method():
             self.phase = 1
+            # maximize -Ai
+            self._opt = self.opt
+            self._set_optimize(max)
             artificial_len = len(self.constraints.artificials)
             self._cj = [self.varnames, [0]*(len(self.varnames) - artificial_len) + [-1]*artificial_len]
         else:
@@ -198,6 +204,7 @@ class LinearProgramming:
     def show_current(self):
         """Shows current simplex tableau"""
         # cj
+        print(f"==========={'MAXIMIZATION' if self.opt is max else 'MINIMIZATION'}===========")
         phase = "" if self.phase == 0 else f" PHASE {self.phase} "
         print("-"*45 + f" Iteration {self.iterations:<3}{phase}" + "-"*45)
         print("   {}{:6}".format(WHITE, "Cj"), end='')
@@ -287,7 +294,7 @@ class LinearProgramming:
 
     def is_not_minimized(self):
         for item in self.cj_zj:
-            if item <= 0:
+            if item < 0:
                 return True
 
     def print_result(self):
@@ -332,6 +339,8 @@ class LinearProgramming:
         else:
             self.phase += 1
             self.iterations = 1
+            # set original function
+            self._set_optimize(self._opt)
             # replace original Cj
             self._cj = self.cj
             # remove artificial variables now
@@ -353,7 +362,7 @@ class LinearProgramming:
             # new iteration
             self.iterations += 1
 
-            self.calc(init=False, show_result=False)
+            self.calc(init=False, show_first=False, show_result=False)
             return True
 
 
@@ -361,7 +370,7 @@ if __name__ == "__main__":
 
     from tests import *
 
-    test3()
+    test6()
     
 
 

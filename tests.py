@@ -71,3 +71,27 @@ def test5():
     c = Constraint("x1 + x2 <= 10") + Constraint("5x1 + 4x2 <= 35")
     linprog = LinearProgramming(z, c)
     linprog.calc()
+
+
+def test6():
+    z = ObjectiveFunction("min f = 100x1 + 50x2 + 200x3")
+    c1 = Constraint("x1 + x2 + x3 = 3000")
+    c2 = Constraint("8x1 + 14x2 + 10x3 <= 42000")
+    c3 = Constraint("10x1 + 12x2 + 6x3 <= 24000")
+    c4 = Constraint("30x1 + 20x2 + 30x3 >= 75000")
+    c5 = Constraint("10x1 + 10x2 + 15x3 >= 36000")
+
+    linprog = LinearProgramming(z, c1 + c2 + c3 + c4 + c5)
+    linprog.calc()
+
+
+def test7():
+    z = ObjectiveFunction("min z = 45x1 + 54x2 + 42x3 + 36x4")
+    c1 = Constraint("x1 + x2 + x3 + x4 = 1600")
+    c2 = Constraint("30x1 + 60x2 + 70x3 + 80x4 = 100000")
+    c3 = Constraint("30x1 + 40x2 + 20x4 = 30000")
+
+    linprog = LinearProgramming(z, c1 + c2 + c3)
+    linprog.calc()
+
+

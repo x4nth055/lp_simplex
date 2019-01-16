@@ -3,7 +3,6 @@ import numpy as np
 from utils import sorter1, sorter2
 
 
-
 class NotValidObjectiveFunctionError(Exception):
     def __init__(self, message):
         self.message = message
@@ -24,7 +23,7 @@ class _LinearParsing:
         for item in items:
             match = _LinearParsing.LINEAR_PATTERN.fullmatch(item)
             if not match:
-                raise ObjectiveFunction.NotValidObjectiveFunctionError(f"Right part of the objective function does not match: '{item}'")
+                raise NotValidObjectiveFunctionError(f"Right part of the objective function does not match: '{item}'")
             groupdict = match.groupdict()
             var = groupdict['var']
             operator = groupdict['op']
@@ -105,7 +104,7 @@ class _LinearParsing:
 
 class ObjectiveFunction:
 
-    LEFT_PART_PATTERN  = re.compile(r"^\s*(?P<opt>min|max)\s+(?P<fname>\w+)\s*")
+    LEFT_PART_PATTERN  = re.compile(r"^\s*(?P<opt>min|max|minimize|maximize)\s+(?P<fname>\w+)\s*")
 
     def __init__(self, string):
         self.string = string
@@ -168,7 +167,7 @@ class ObjectiveFunction:
 
 class Constraint:
 
-    ecarts_counter = 0
+    slacks_counter = 0
     artificial_counter = 0
 
     SPLITTER_PATTERN = re.compile(r"(?P<op>=|<=|>=)")
@@ -179,7 +178,7 @@ class Constraint:
         self._items = []
 
         self.a = []
-        self.ecarts, self.artificial = None, None
+        self.slacks, self.artificial = None, None
         self.varnames = []
 
         self.op = None
@@ -224,9 +223,9 @@ class Constraint:
         elif self.op == '<=':
             if self.b > 0:
                 # add e1
-                self.ecarts = Constraint._gen_slacks(self.varnames)
+                self.slacks = Constraint._gen_slacks(self.varnames)
                 self.a.extend([1.0])
-                self.varnames.extend([self.ecarts])
+                self.varnames.extend([self.slacks])
             else:
                 # multiply the RHS and LHS by -1 and change the operator
                 multiply_by_negative_1()
@@ -243,9 +242,9 @@ class Constraint:
             else:
                 multiply_by_negative_1()
                 # add e1
-                self.ecarts = Constraint._gen_slacks(self.varnames)
+                self.slacks = Constraint._gen_slacks(self.varnames)
                 self.a.extend([1.0])
-                self.varnames.extend([self.ecarts])
+                self.varnames.extend([self.slacks])
         self.op = "="
         # convert to numpy array
         self.a = np.array(self.a)
@@ -254,7 +253,7 @@ class Constraint:
         try:
             left, self.op, right = Constraint.SPLITTER_PATTERN.split(self.string)
         except ValueError:
-            raise Constraint.NotValidConstraintError("An LP Constraint must contain one and only one of the following characters: ('=', '<=', '>=')")
+            raise NotValidConstraintError("An LP Constraint must contain one and only one of the following characters: ('=', '<=', '>=')")
         
         self._left_part = left
         right = right.strip()
@@ -262,7 +261,7 @@ class Constraint:
         try:
             self.b = float(right)
         except ValueError:
-            raise Constraint.NotValidConstraintError("Right part of a constraint isn't valid: " + right)
+            raise NotValidConstraintError("Right part of a constraint isn't valid: " + right)
 
         _LinearParsing.fill_items(self._left_part, self._items)
 
@@ -322,8 +321,8 @@ class Constraint:
         slacks = list({'s', 'e'} - Constraint.__gen_vars(varnames))
 
         var = slacks.pop()
-        Constraint.ecarts_counter += 1
-        return f"{var}{Constraint.ecarts_counter}"
+        Constraint.slacks_counter += 1
+        return f"{var}{Constraint.slacks_counter}"
 
     @staticmethod
     def _gen_artifical(varnames):
@@ -336,6 +335,7 @@ class Constraint:
         return f"{var}{Constraint.artificial_counter}"
 
 
+
 class Constraints:
 
     def __init__(self, vars, constraints, a, b):
@@ -346,7 +346,7 @@ class Constraints:
         self.b = b
 
         self.artificials = []
-        self.ecarts = []
+        self.slacks = []
 
         self._collect_artslack()
 
@@ -355,8 +355,8 @@ class Constraints:
         for c in self.constraints:
             if c.artificial:
                 self.artificials.append(c.artificial)
-            if c.ecarts:
-                self.ecarts.append(c.ecarts)
+            if c.slacks:
+                self.slacks.append(c.slacks)
 
     def __str__(self):
         returned = ""
@@ -412,11 +412,12 @@ class Constraints:
         return Constraints(global_order, self.constraints + other_constraints, target, new_b)
 
 
+
 if __name__ == "__main__":
 
     objfunc = ObjectiveFunction("max f = 4x1 + x2 - x3")
 
-    c1 = Constraint("4x1 + 5x2 + x3 <= 4")
+    c1 = Constraint("4x1 + 5x2 + x3 + 0.05x4 <= 4")
     c2 = Constraint("14x3 + 12x2 - x4 <= 3")
     c3 = Constraint("3x2 + 2 x3 + x4 >= 5")
     c4 = Constraint("-x2 + 5x3 <= -1")
@@ -425,6 +426,7 @@ if __name__ == "__main__":
     print(c.a)
     print("="*60)
     print(c.artificials)
+    print(c.slacks)
 
 
 
